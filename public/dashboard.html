@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel · Combinado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1c211e;--paper:#f6f2e9;--forest:#16302a;--mustard:#c98a2b;--line:rgba(28,33,30,0.14);}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 24px 80px;}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;}
+  h1{font-family:'Fraunces',serif;font-size:1.8rem;margin:0;}
+  .logout{font-size:0.85rem;opacity:0.6;cursor:pointer;}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;}
+  .stat .num{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:700;}
+  .stat .label{font-size:0.8rem;opacity:0.6;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;}
+  .panel h2{font-family:'Fraunces',serif;font-size:1.1rem;margin:0 0 14px;}
+  .row{display:flex;justify-content:space-between;font-size:0.9rem;padding:8px 0;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .empty{opacity:0.5;font-size:0.88rem;}
+  @media (max-width:800px){.cards{grid-template-columns:repeat(2,1fr);}.cols{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Seu painel</h1>
+    <span class="logout" onclick="logout()">sair</span>
+  </div>
+
+  <div class="cards">
+    <div class="stat"><div class="num" id="s-total">R$ 0</div><div class="label">gasto esse mês</div></div>
+    <div class="stat"><div class="num" id="s-tasks">0</div><div class="label">tarefas pendentes</div></div>
+    <div class="stat"><div class="num" id="s-events">0</div><div class="label">próximos compromissos</div></div>
+    <div class="stat"><div class="num" id="s-docs">0</div><div class="label">documentos guardados</div></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Gastos do mês</h2>
+      <div id="list-expenses"><p class="empty">Carregando...</p></div>
+    </div>
+    <div class="panel">
+      <h2>Tarefas pendentes</h2>
+      <div id="list-tasks"><p class="empty">Carregando...</p></div>
+    </div>
+    <div class="panel">
+      <h2>Próximos compromissos</h2>
+      <div id="list-events"><p class="empty">Carregando...</p></div>
+    </div>
+    <div class="panel">
+      <h2>Documentos</h2>
+      <div id="list-docs"><p class="empty">Carregando...</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem('combinado_token');
+  if (!token) window.location.href = 'planos.html';
+
+  function logout() {
+    localStorage.removeItem('combinado_token');
+    window.location.href = 'index.html';
+  }
+
+  function money(v) { return 'R$ ' + Number(v).toFixed(2); }
+
+  function renderList(elId, items, render, emptyText) {
+    const el = document.getElementById(elId);
+    if (!items.length) { el.innerHTML = `<p class="empty">${emptyText}</p>`; return; }
+    el.innerHTML = items.map(render).join('');
+  }
+
+  async function load() {
+    const res = await fetch('/dashboard/summary', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { logout(); return; }
+    const data = await res.json();
+
+    document.getElementById('s-total').textContent = money(data.totalGasto);
+    document.getElementById('s-tasks').textContent = data.tasks.length;
+    document.getElementById('s-events').textContent = data.events.length;
+    document.getElementById('s-docs').textContent = data.documents.length;
+
+    renderList('list-expenses', data.expenses,
+      (e) => `<div class="row"><span>${e.category} — ${e.description}</span><span>${money(e.amount)}</span></div>`,
+      'Nenhum gasto registrado ainda.');
+
+    renderList('list-tasks', data.tasks,
+      (t) => `<div class="row"><span>${t.title}</span><span>${t.due_date || (t.priority === 'alta' ? 'prioridade' : '')}</span></div>`,
+      'Nenhuma tarefa pendente.');
+
+    renderList('list-events', data.events,
+      (e) => `<div class="row"><span>${e.title}</span><span>${e.start_time || 'sem data'}</span></div>`,
+      'Nenhum compromisso marcado.');
+
+    renderList('list-docs', data.documents,
+      (d) => `<div class="row"><span>${d.description}</span><span>${d.category}</span></div>`,
+      'Nenhum documento guardado.');
+  }
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# Netlify publica só o site estático (pasta public/).
+# As chamadas de API são encaminhadas (proxy) para o backend hospedado no Render.
+# Troque SEU-SERVICO pelo nome do serviço no Render (ex.: combinado-api).
+[build]
+  publish = "public"
+
+[[redirects]]
+  from = "/auth/*"
+  to = "https://SEU-SERVICO.onrender.com/auth/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/billing/*"
+  to = "https://SEU-SERVICO.onrender.com/billing/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/*"
+  to = "https://SEU-SERVICO.onrender.com/dashboard/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/playground/*"
+  to = "https://SEU-SERVICO.onrender.com/playground/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "https://SEU-SERVICO.onrender.com/health"
+  status = 200
+
+# Cabeçalhos básicos de segurança para o site.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

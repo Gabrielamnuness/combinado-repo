@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos · Combinado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1c211e;--paper:#f6f2e9;--forest:#16302a;--mustard:#c98a2b;--mustard-dark:#a86f1e;--line:rgba(28,33,30,0.14);}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:60px 24px;}
+  h1{font-family:'Fraunces',serif;font-size:2.2rem;margin:0 0 8px;}
+  .sub{opacity:0.7;margin-bottom:40px;}
+  a.back{text-decoration:none;color:var(--ink);opacity:0.6;font-size:0.9rem;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px;}
+  .card h2{font-family:'Fraunces',serif;font-size:1.3rem;margin:0 0 20px;}
+  label{display:block;font-size:0.85rem;font-weight:600;margin:14px 0 6px;}
+  input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:0.95rem;font-family:inherit;}
+  .hint{font-size:0.78rem;opacity:0.6;margin-top:4px;}
+  button{margin-top:22px;width:100%;padding:13px;border:none;border-radius:100px;background:var(--forest);color:var(--paper);font-weight:600;font-size:0.95rem;cursor:pointer;}
+  button:hover{background:#0e2019;}
+  button:disabled{opacity:0.6;cursor:wait;}
+  .msg{margin-top:14px;font-size:0.88rem;padding:10px 14px;border-radius:10px;display:none;}
+  .msg.error{background:#fbe3e0;color:#8a2f22;display:block;}
+  .msg.ok{background:#e2eee0;color:#22562f;display:block;}
+  .plans{display:flex;flex-direction:column;gap:14px;margin-bottom:20px;}
+  .plan{border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .plan.selected{border-color:var(--mustard);background:#fbf3e4;}
+  .plan .price{font-family:'Fraunces',serif;font-weight:700;text-align:right;white-space:nowrap;}
+  .plan small{opacity:0.6;}
+  .tag{display:inline-block;background:var(--mustard);color:var(--forest);font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:100px;margin-left:8px;}
+  #step-plan{display:none;}
+  .switch{text-align:center;margin-top:16px;font-size:0.88rem;}
+  .switch a{color:var(--mustard-dark);font-weight:600;cursor:pointer;text-decoration:none;}
+  @media (max-width:800px){.grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← voltar</a>
+  <h1>Monte sua turma</h1>
+  <p class="sub">Crie sua conta, escolha o plano e comece a usar pelo WhatsApp hoje mesmo.</p>
+
+  <div class="grid">
+    <div class="card" id="card-auth">
+      <h2 id="auth-title">Criar minha conta</h2>
+      <form id="form-register">
+        <label for="reg-name">Nome</label>
+        <input type="text" id="reg-name" autocomplete="name" required>
+        <label for="reg-whats">WhatsApp</label>
+        <input type="tel" id="reg-whats" autocomplete="tel" placeholder="11 99999-9999" required>
+        <div class="hint">É por esse número que a turma vai falar com você.</div>
+        <label for="reg-email">E-mail</label>
+        <input type="email" id="reg-email" autocomplete="email" required>
+        <label for="reg-pass">Senha (mínimo 8 caracteres)</label>
+        <input type="password" id="reg-pass" autocomplete="new-password" minlength="8" required>
+        <button type="submit">Criar conta e continuar</button>
+      </form>
+      <form id="form-login" style="display:none;">
+        <label for="log-email">E-mail</label>
+        <input type="email" id="log-email" autocomplete="email" required>
+        <label for="log-pass">Senha</label>
+        <input type="password" id="log-pass" autocomplete="current-password" required>
+        <button type="submit">Entrar e continuar</button>
+      </form>
+      <div class="msg" id="auth-msg"></div>
+      <div class="switch">
+        <span id="switch-to-login">Já tem conta? <a>Entrar</a></span>
+        <span id="switch-to-register" style="display:none;">Não tem conta? <a>Criar agora</a></span>
+      </div>
+    </div>
+
+    <div class="card" id="step-plan">
+      <h2>Escolha o plano</h2>
+      <div class="plans" id="lista-planos"></div>
+      <button id="btn-checkout">Ir para o pagamento</button>
+      <div class="msg" id="plan-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  let token = localStorage.getItem('combinado_token');
+  const authCard = document.getElementById('card-auth');
+  const planStep = document.getElementById('step-plan');
+  const planMsg = document.getElementById('plan-msg');
+  let selectedPlan = ['mensal', 'trimestral', 'anual'].includes(params.get('plano')) ? params.get('plano') : 'anual';
+  let planosCarregados = [];
+
+  const mostrar = (el, tipo, texto) => { el.className = 'msg ' + tipo; el.textContent = texto; };
+
+  // Mensagens vindas do retorno do Stripe.
+  if (params.get('sucesso')) mostrar(planMsg, 'ok', 'Pagamento recebido! Sua turma já está ativa no WhatsApp.');
+  if (params.get('cancelado')) mostrar(planMsg, 'error', 'Pagamento cancelado. Você pode escolher outro plano quando quiser.');
+
+  async function carregarPlanos() {
+    const res = await fetch('/billing/planos');
+    const data = await res.json();
+    planosCarregados = data.planos;
+    const lista = document.getElementById('lista-planos');
+    lista.innerHTML = '';
+    data.planos.forEach((p) => {
+      const el = document.createElement('div');
+      el.className = 'plan' + (p.id === selectedPlan ? ' selected' : '');
+      el.dataset.plan = p.id;
+      el.innerHTML = `<div>${p.label}${p.id === 'anual' ? '<span class="tag">mais barato</span>' : ''}<br><small>${p.equivalenteTexto}</small></div><div class="price">${p.precoTexto}</div>`;
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.plan').forEach((x) => x.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedPlan = p.id;
+      });
+      lista.appendChild(el);
+    });
+  }
+
+  document.getElementById('switch-to-login').querySelector('a').onclick = () => {
+    document.getElementById('form-register').style.display = 'none';
+    document.getElementById('form-login').style.display = 'block';
+    document.getElementById('auth-title').textContent = 'Entrar na minha conta';
+    document.getElementById('switch-to-login').style.display = 'none';
+    document.getElementById('switch-to-register').style.display = 'block';
+  };
+  document.getElementById('switch-to-register').querySelector('a').onclick = () => {
+    document.getElementById('form-register').style.display = 'block';
+    document.getElementById('form-login').style.display = 'none';
+    document.getElementById('auth-title').textContent = 'Criar minha conta';
+    document.getElementById('switch-to-login').style.display = 'block';
+    document.getElementById('switch-to-register').style.display = 'none';
+  };
+
+  document.getElementById('form-register').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('auth-msg');
+    const body = {
+      name: document.getElementById('reg-name').value,
+      whatsappNumber: document.getElementById('reg-whats').value,
+      email: document.getElementById('reg-email').value,
+      password: document.getElementById('reg-pass').value,
+    };
+    const res = await fetch('/auth/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) return mostrar(msg, 'error', data.error);
+    token = data.token;
+    localStorage.setItem('combinado_token', token);
+    mostrar(msg, 'ok', 'Conta criada!');
+    showPlanStep();
+  });
+
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('auth-msg');
+    const body = { email: document.getElementById('log-email').value, password: document.getElementById('log-pass').value };
+    const res = await fetch('/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) return mostrar(msg, 'error', data.error);
+    token = data.token;
+    localStorage.setItem('combinado_token', token);
+    mostrar(msg, 'ok', 'Login feito!');
+    showPlanStep();
+  });
+
+  function showPlanStep() {
+    authCard.querySelector('h2').textContent = 'Você já está logado';
+    planStep.style.display = 'block';
+    carregarPlanos();
+  }
+
+  document.getElementById('btn-checkout').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-checkout');
+    btn.disabled = true;
+    const res = await fetch('/billing/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ plan: selectedPlan }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      btn.disabled = false;
+      if (res.status === 401) { localStorage.removeItem('combinado_token'); location.reload(); return; }
+      return mostrar(planMsg, 'error', data.error || 'Erro ao iniciar pagamento.');
+    }
+    if (data.demo) {
+      mostrar(planMsg, 'ok', 'Modo demo: assinatura ativada sem cobrança real. Redirecionando para o painel...');
+      setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    } else {
+      window.location.href = data.url; // Checkout do Stripe
+    }
+  });
+
+  if (token) showPlanStep();
+</script>
+</body>
+</html>

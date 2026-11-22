@@ -1,0 +1,63 @@
+# Blueprint do Render: cria o serviço da API com disco persistente para o SQLite.
+# Disco persistente exige plano pago (starter). No plano gratuito o serviço dorme
+# e o disco não existe, então lembretes e webhooks ficam comprometidos.
+services:
+  - type: web
+    name: combinado-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    disk:
+      name: combinado-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /var/data/combinado.db
+      - key: TIMEZONE
+        value: America/Sao_Paulo
+      - key: APP_URL
+        sync: false # https://SEU-SITE.netlify.app
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_TEMPLATE_LEMBRETE
+        sync: false
+      - key: WHATSAPP_TEMPLATE_DONO
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-5-5
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID_MENSAL
+        sync: false
+      - key: STRIPE_PRICE_ID_TRIMESTRAL
+        sync: false
+      - key: STRIPE_PRICE_ID_ANUAL
+        sync: false
+      - key: OWNER_NOME
+        sync: false
+      - key: OWNER_RECEBEDOR
+        sync: false
+      - key: OWNER_WHATSAPP
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false

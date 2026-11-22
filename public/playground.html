@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playground · Combinado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1c211e;--paper:#f6f2e9;--forest:#16302a;--mustard:#c98a2b;--line:rgba(28,33,30,0.14);}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .wrap{max-width:520px;margin:0 auto;padding:40px 20px;}
+  a.back{text-decoration:none;color:var(--ink);opacity:0.6;font-size:0.9rem;}
+  h1{font-family:'Fraunces',serif;font-size:1.6rem;margin:14px 0 4px;}
+  .sub{opacity:0.65;font-size:0.9rem;margin-bottom:20px;}
+  label{display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;}
+  input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:0.92rem;margin-bottom:16px;}
+  .phone{background:var(--forest);border-radius:26px;padding:16px;min-height:420px;display:flex;flex-direction:column;}
+  .chat{flex:1;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding:6px 2px;}
+  .bubble{padding:9px 13px;border-radius:14px;font-size:0.88rem;max-width:80%;white-space:pre-wrap;line-height:1.4;}
+  .bubble.me{background:var(--mustard);color:var(--forest);align-self:flex-end;border-bottom-right-radius:4px;}
+  .bubble.them{background:rgba(246,242,233,0.12);color:var(--paper);align-self:flex-start;border:1px solid rgba(246,242,233,0.18);border-bottom-left-radius:4px;}
+  form{display:flex;gap:8px;margin-top:12px;}
+  form input{margin:0;flex:1;background:rgba(246,242,233,0.9);}
+  button{border:none;background:var(--mustard);color:var(--forest);font-weight:700;border-radius:10px;padding:0 18px;cursor:pointer;}
+  .hint{font-size:0.78rem;opacity:0.55;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← voltar</a>
+  <h1>Playground de testes</h1>
+  <p class="sub">Simula uma conversa de WhatsApp direto no navegador — não precisa de conta na Meta pra testar a lógica.</p>
+
+  <label>Número de teste (finge ser o WhatsApp do cliente)</label>
+  <input id="phone" value="5571990000000">
+
+  <div class="phone">
+    <div class="chat" id="chat"></div>
+    <form id="form">
+      <input id="text" placeholder="ex: gastei 45 no mercado" autocomplete="off">
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+  <p class="hint">Se ainda não assinou nenhum plano com esse número, a turma vai pedir pra assinar primeiro — assim como aconteceria de verdade.</p>
+</div>
+
+<script>
+  const chat = document.getElementById('chat');
+  function addBubble(text, who) {
+    const div = document.createElement('div');
+    div.className = 'bubble ' + who;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const phone = document.getElementById('phone').value.trim();
+    const input = document.getElementById('text');
+    const text = input.value.trim();
+    if (!text) return;
+    addBubble(text, 'me');
+    input.value = '';
+
+    const res = await fetch('/playground/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, text }),
+    });
+    const data = await res.json();
+    addBubble(data.reply || data.error || 'Erro inesperado.', 'them');
+  });
+</script>
+</body>
+</html>
